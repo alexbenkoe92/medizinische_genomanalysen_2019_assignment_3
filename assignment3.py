@@ -1,8 +1,10 @@
 #! /usr/bin/env python3
 
 import vcf
+import httplib2
+from pathlib import Path
 
-__author__ = 'XXX'
+__author__ = 'Alexander Benkö'
 
 
 ##
@@ -18,100 +20,100 @@ __author__ = 'XXX'
 ##
 
 class Assignment3:
-    
-    def __init__(self):
+
+    def __init__(self, filename):
         ## Check if pyvcf is installed
         print("PyVCF version: %s" % vcf.VERSION)
-        
-        ## Call annotate_vcf_file here
-        
 
-    def annotate_vcf_file(self):
+        ## Call annotate_vcf_file here
+        self.vcf_path = f"{filename}.vcf"
+
+    def annotate_vcf_file(self, annotation_filename):
         '''
         - Annotate the VCF file using the following example code (for 1 variant)
         - Iterate of the variants (use first 900)
         - Store the result in a data structure
         :return:
-        '''    
-        print("TODO")
-        
-        
+        '''
+
         ##
-        ## Example code for 1 variant
+        ## Example loop
         ##
-        import httplib2
-        h = httplib2.Http()
-        headers = {'content-type': 'application/x-www-form-urlencoded'}
-        params = 'ids=chr16:g.28883241A>G,chr1:g.35367G>A'
-        res, con = h.request('http://myvariant.info/v1/variant', 'POST', params, headers=headers)
-        
-        ## Use .decode('utf-8') on con object
-        
-        ##
-        ## End example code
-        ##
-        
-        return None  ## return the data structure here
-    
-    
-    def get_list_of_genes(self):
+
+        ## Build the connection
+        if not Path.cwd().joinpath(f"{annotation_filename}.json").exists():
+            h = httplib2.Http()
+            headers = {'content-type': 'application/x-www-form-urlencoded'}
+
+            params_pos = []  # List of variant positions
+            with open(self.vcf_path) as my_vcf_fh:
+                vcf_reader = vcf.Reader(my_vcf_fh)
+                for counter, record in enumerate(vcf_reader):
+                    params_pos.append(record.CHROM + ":g." + str(record.POS) + record.REF + ">" + str(record.ALT[0]))
+
+                    if counter >= 899:
+                        break
+
+            ## Build the parameters using the list we just built
+            params = 'ids=' + ",".join(params_pos) + '&hg38=true'
+
+            ## Perform annotation
+            res, con = h.request('http://myvariant.info/v1/variant', 'POST', params, headers=headers)
+            annotation_result = con.decode('utf-8') ## Type String
+
+            with open(f"{annotation_filename}.json", "w") as af:
+                for line in annotation_result:
+                    af.write(line)
+
+    def run_analysis(self):
         '''
         Print the name of genes in the annotation data set
         :return:
         '''
-        print("TODO")
-    
-    
-    def get_num_variants_modifier(self):
-        '''
-        Print the number of variants with putative_impact "MODIFIER"
-        :return:
-        '''
-        print("TODO")
-        
-    
-    def get_num_variants_with_mutationtaster_annotation(self):
-        '''
-        Print the number of variants with a 'mutationtaster' annotation
-        :return:
-        '''
-        print("TODO")
-        
-    
-    def get_num_variants_non_synonymous(self):
-        '''
-        Print the number of variants with 'consequence' 'NON_SYNONYMOUS'
-        :return:
-        '''
-        print("TODO")
-        
-    
+        self.gene_names = []
+        self.imp_modifier = 0
+        self.mut_taster = 0
+        self.cons_nonsyn = 0
+        with open("annotation.json", "r") as fh:
+            for line in fh:
+                if "genename" in line:
+                    self.gene_names.append(line)
+                if '"putative_impact": "MODIFIER"' in line:
+                    self.imp_modifier += 1
+                if "mutationtaster" in line:
+                    self.mut_taster += 1
+                if '"consequence": "NON_SYNONYMOUS"' in line:
+                    self.cons_nonsyn += 1
+
+        self.gene_names = set([i.strip().strip(",").strip('"genename": ').strip('"') for i in self.gene_names])
+        self.gene_amount = len(self.gene_names)
+        print(f"\nGene Names: {self.gene_names}")
+        print(f"\nVariants with Putative Impact = Modifier: {self.imp_modifier}")
+        print(f"\nVariants with Mutationtaste Annotation: {self.mut_taster}")
+        print(f"\nVariants with Consequence = Non-Synonymous: {self.cons_nonsyn}")
+
     def view_vcf_in_browser(self):
         '''
         - Open a browser and go to https://vcf.iobio.io/
         - Upload the VCF file and investigate the details
         :return:
         '''
-   
+
         ## Document the final URL here
-        print("TODO")
-            
-    
+        print("\nhttps://vcf.iobio.io/?species=Human&build=GRCh38")
+
     def print_summary(self):
-        print("Print all results here")
-    
-    
+        self.annotate_vcf_file("annotation")
+        self.run_analysis()
+
+
 def main():
-    print("Assignment 3")
-    assignment3 = Assignment3()
+    print("Assignment 3\n")
+    assignment3 = Assignment3("chr16")
     assignment3.print_summary()
-    print("Done with assignment 3")
-        
-        
+    assignment3.view_vcf_in_browser()
+    print("\nDone with assignment 3")
+
+
 if __name__ == '__main__':
     main()
-   
-    
-
-
-

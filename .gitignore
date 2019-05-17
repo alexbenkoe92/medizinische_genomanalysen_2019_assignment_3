@@ -1,0 +1,6 @@
+annotation.json
+.venv
+.idea
+chr16.vcf
+chr16.vcf.gz
+chr16.vcf.gz.tbi
