@@ -89,7 +89,7 @@ class Assignment3:
         self.gene_amount = len(self.gene_names)
         print(f"\nGene Names: {self.gene_names}")
         print(f"\nVariants with Putative Impact = Modifier: {self.imp_modifier}")
-        print(f"\nVariants with Mutationtaste Annotation: {self.mut_taster}")
+        print(f"\nVariants with Mutationtaster Annotation: {self.mut_taster}")
         print(f"\nVariants with Consequence = Non-Synonymous: {self.cons_nonsyn}")
 
     def view_vcf_in_browser(self):
