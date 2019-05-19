@@ -3,6 +3,8 @@
 import vcf
 import httplib2
 from pathlib import Path
+import json
+from copy import copy
 
 __author__ = 'Alexander Benkö'
 
@@ -41,26 +43,52 @@ class Assignment3:
         ##
 
         ## Build the connection
+
+        h = httplib2.Http()
+        headers = {'content-type': 'application/x-www-form-urlencoded'}
+
+        params_pos = []  # List of variant positions
+        with open(self.vcf_path) as my_vcf_fh:
+            vcf_reader = vcf.Reader(my_vcf_fh)
+            for counter, record in enumerate(vcf_reader):
+                params_pos.append(record.CHROM + ":g." + str(record.POS) + record.REF + ">" + str(record.ALT[0]))
+
+                if counter >= 899:
+                    break
+
+        ## Build the parameters using the list we just built
+        params = 'ids=' + ",".join(params_pos) + '&hg38=true'
+
+        datasource = ["cadd", "dbsnp", "snpeff", "mutdb", "clinvar", "dbsfp", ]
+
+        ## Perform annotation
+        res, con = h.request('http://myvariant.info/v1/variant', 'POST', params, headers=headers)
+        annotation_result = con.decode('utf-8') ## Type String
+        self.annotation = json.loads(annotation_result)
+        self.annotation_short = []
+        for i in self.annotation:
+            if not "notfound" in i:
+                self.annotation_short.append(i)
+
+        annotation_temp = copy(self.annotation_short)
+
+        for i in annotation_temp:
+            for k,v in i.items():
+                if not k in datasource:
+                    i.pop(k)
+
+        print(self.annotation_short)
+
+    # for i in self.annotation_short:
+    #     for k,v in i.items():
+    #         if k in datasource:
+    #             print(k,v)
+
+
+
+
+
         if not Path.cwd().joinpath(f"{annotation_filename}.json").exists():
-            h = httplib2.Http()
-            headers = {'content-type': 'application/x-www-form-urlencoded'}
-
-            params_pos = []  # List of variant positions
-            with open(self.vcf_path) as my_vcf_fh:
-                vcf_reader = vcf.Reader(my_vcf_fh)
-                for counter, record in enumerate(vcf_reader):
-                    params_pos.append(record.CHROM + ":g." + str(record.POS) + record.REF + ">" + str(record.ALT[0]))
-
-                    if counter >= 899:
-                        break
-
-            ## Build the parameters using the list we just built
-            params = 'ids=' + ",".join(params_pos) + '&hg38=true'
-
-            ## Perform annotation
-            res, con = h.request('http://myvariant.info/v1/variant', 'POST', params, headers=headers)
-            annotation_result = con.decode('utf-8') ## Type String
-
             with open(f"{annotation_filename}.json", "w") as af:
                 for line in annotation_result:
                     af.write(line)
@@ -70,6 +98,7 @@ class Assignment3:
         Print the name of genes in the annotation data set
         :return:
         '''
+
         self.gene_names = []
         self.imp_modifier = 0
         self.mut_taster = 0
