@@ -4,7 +4,7 @@ import vcf
 import httplib2
 from pathlib import Path
 import json
-from copy import copy
+from collections import namedtuple
 
 __author__ = 'Alexander Benkö'
 
@@ -30,7 +30,7 @@ class Assignment3:
         ## Call annotate_vcf_file here
         self.vcf_path = f"{filename}.vcf"
 
-    def annotate_vcf_file(self, annotation_filename):
+    def annotate_vcf_file(self):
         '''
         - Annotate the VCF file using the following example code (for 1 variant)
         - Iterate of the variants (use first 900)
@@ -59,7 +59,7 @@ class Assignment3:
         ## Build the parameters using the list we just built
         params = 'ids=' + ",".join(params_pos) + '&hg38=true'
 
-        datasource = ["cadd", "dbsnp", "snpeff", "mutdb", "clinvar", "dbsfp", ]
+        datasource = ["cadd", "dbsnp", "snpeff", "mutdb", "clinvar", "dbsfp"]
 
         ## Perform annotation
         res, con = h.request('http://myvariant.info/v1/variant', 'POST', params, headers=headers)
@@ -70,26 +70,77 @@ class Assignment3:
             if not "notfound" in i:
                 self.annotation_short.append(i)
 
-        annotation_temp = copy(self.annotation_short)
+        # ## Alternative Way of finding Parameters (without an output file)
+        # ## Temporary List, shortened to only include Genes that have been found
+        # templist = []
+        # for x in self.annotation_short:
+        #     for k,v in x.items():
+        #         if k in datasource:
+        #             templist.append(v)
+        #
+        # ## GENES & GENENAMES
+        # self.gene_names_alt = []
+        # for i in templist:
+        #     for k,v in i.items():
+        #         if type(v) == dict and "genename" in v:
+        #             for kx,vx in v.items():
+        #                 if kx == "genename":
+        #                     self.gene_names_alt.append(vx)
+        #         elif type(v) == list:
+        #             for vy in v:
+        #                 if type(vy) == dict and "genename" in vy:
+        #                     self.gene_names_alt.append(vy["genename"])
+        # self.gene_names_alt = set(self.gene_names_alt)
+        #
+        # ## PUTATIVE IMPACT
+        # self.imp_modifier_alt = 0
+        # for i in templist:
+        #     for k,v in i.items():
+        #         if type(v) == dict and "putative_impact" in v:
+        #             for kx,vx in v.items():
+        #                 if kx == "putative_impact" and vx == "MODIFIER":
+        #                     self.imp_modifier_alt += 1
+        #         elif type(v) == list:
+        #             for vy in v:
+        #                 if type(vy) == dict and "putative_impact" in vy:
+        #                     if vy["putative_impact"] == "MODIFIER":
+        #                         self.imp_modifier_alt += 1
+        #
+        # ## MUTATIONTASTER
+        # self.mut_taster_alt = 0
+        # for i in templist:
+        #     for k,v in i.items():
+        #         if type(v) == dict and "mutationtaster" in v:
+        #             self.mut_taster_alt += 1
+        #         elif type(v) == list:
+        #             for vy in v:
+        #                 if type(vy) == dict and "mutationtaster" in vy:
+        #                     self.mut_taster_alt += 1
+        #
+        #
+        # ## CONSEQUENCE
+        # self.cons_nonsyn_alt = 0
+        # for i in templist:
+        #     for k,v in i.items():
+        #         if type(v) == dict and "consequence" in v:
+        #             for kx,vx in v.items():
+        #                 if kx == "consequence" and vx == "NON_SYNONYMOUS":
+        #                     self.cons_nonsyn_alt += 1
+        #         elif type(v) == list:
+        #             for vy in v:
+        #                 if type(vy) == dict and "consequence" in vy:
+        #                     if vy["consequence"] == "NON_SYNONYMOUS":
+        #                         self.cons_nonsyn_alt += 1
+        #
+        #
+        # print(f"\nGene Names: {self.gene_names_alt}")
+        # print(f"Amount of Genes: {len(self.gene_names_alt)}")
+        # print(f"\nVariants with Putative Impact = Modifier: {self.imp_modifier_alt}")
+        # print(f"\nVariants with Mutationtaster Annotation: {self.mut_taster_alt}")
+        # print(f"\nVariants with Consequence = Non-Synonymous: {self.cons_nonsyn_alt}")
 
-        for i in annotation_temp:
-            for k,v in i.items():
-                if not k in datasource:
-                    i.pop(k)
-
-        print(self.annotation_short)
-
-    # for i in self.annotation_short:
-    #     for k,v in i.items():
-    #         if k in datasource:
-    #             print(k,v)
-
-
-
-
-
-        if not Path.cwd().joinpath(f"{annotation_filename}.json").exists():
-            with open(f"{annotation_filename}.json", "w") as af:
+        if not Path.cwd().joinpath("annotation.json").exists():
+            with open("annotation.json", "w") as af:
                 for line in annotation_result:
                     af.write(line)
 
@@ -98,11 +149,15 @@ class Assignment3:
         Print the name of genes in the annotation data set
         :return:
         '''
-
+        ## Easy Way of finding Parameters
         self.gene_names = []
         self.imp_modifier = 0
         self.mut_taster = 0
         self.cons_nonsyn = 0
+
+        if not Path.cwd().joinpath("annotation.json").exists():
+            self.annotate_vcf_file()
+
         with open("annotation.json", "r") as fh:
             for line in fh:
                 if "genename" in line:
@@ -117,9 +172,11 @@ class Assignment3:
         self.gene_names = set([i.strip().strip(",").strip('"genename": ').strip('"') for i in self.gene_names])
         self.gene_amount = len(self.gene_names)
         print(f"\nGene Names: {self.gene_names}")
+        print(f"Amount of Genes: {self.gene_amount}")
         print(f"\nVariants with Putative Impact = Modifier: {self.imp_modifier}")
         print(f"\nVariants with Mutationtaster Annotation: {self.mut_taster}")
         print(f"\nVariants with Consequence = Non-Synonymous: {self.cons_nonsyn}")
+
 
     def view_vcf_in_browser(self):
         '''
@@ -132,7 +189,7 @@ class Assignment3:
         print("\nhttps://vcf.iobio.io/?species=Human&build=GRCh38")
 
     def print_summary(self):
-        self.annotate_vcf_file("annotation")
+        self.annotate_vcf_file()
         self.run_analysis()
 
 
