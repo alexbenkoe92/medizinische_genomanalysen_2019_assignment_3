@@ -4,7 +4,6 @@ import vcf
 import httplib2
 from pathlib import Path
 import json
-from collections import namedtuple
 
 __author__ = 'Alexander Benkö'
 
@@ -28,7 +27,10 @@ class Assignment3:
         print("PyVCF version: %s" % vcf.VERSION)
 
         ## Call annotate_vcf_file here
-        self.vcf_path = f"{filename}.vcf"
+        if ".vcf" in filename:
+            self.vcf_path = filename
+        else:
+            self.vcf_path = f"{filename}.vcf"
 
     def annotate_vcf_file(self):
         '''
